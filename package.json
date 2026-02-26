@@ -11,5 +11,12 @@
   "license": "ISC",
   "dependencies": {
     "cwebp-bin": "^8.0.0"
-  }
+  },
+  "engines": {
+    "node": "24.12.0",
+    "pnpm": "10.27.0",
+    "npm": "Please use pnpm, instead of npm.",
+    "yarn": "Please use pnpm, instead of yarn."
+  },
+  "packageManager": "pnpm@10.27.0"
 }

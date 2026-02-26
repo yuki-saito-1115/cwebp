@@ -1,44 +1,47 @@
 # cwebp
 
-`src/` ディレクトリの画像を WebP に一括変換して `dist/` へ出力する CLI ツールです。
+`public/` ディレクトリの画像を WebP に一括変換して `dist/` へ出力する CLI ツールです。
 
 ## 必要環境
 
-- Node.js 18+
+- Node.js 24+
+- pnpm
 
 ## インストール
 
 ```bash
-npm install
+pnpm i --frozen-lockfile
 ```
 
 ## 使い方
 
 ```bash
-npm run convert
+pnpm convert
 ```
 
-実行すると変換品質の入力を求めるプロンプトが表示されます。
+実行するといくつかの設問が表示されます。
 
 ```
-変換品質を入力してください (0〜100、デフォルト: 80):
+インプットディレクトリ（デフォルト: public）:
+元ファイル: [1] 置換 [2] 追加 [3] （デフォルト: 3）:
+変換品質: 0〜100（デフォルト: 100）:
 ```
 
-Enter のみで品質 `80` が使用されます。
+すべて Enter のみでデフォルト値が使用されます（入力ディレクトリ: `public`、元ファイル操作: なし、品質: ロスレス）。
 
 ## 動作
 
-`src/` に配置した画像ファイルを検索し、ディレクトリ構造を保ったまま `dist/` へ WebP として出力します。
+指定ディレクトリの画像ファイルを検索し、ディレクトリ構造を保ったまま `dist/` へ WebP として出力します。
 
 ```
-src/
+public/
 ├── hero.jpg
 ├── icons/
 │   └── logo.png
 └── photos/
     └── sample.jpeg
 
-↓ npm run convert
+↓ pnpm convert
 
 dist/
 ├── hero.webp
@@ -66,13 +69,14 @@ dist/
 
 | 定数 | デフォルト | 説明 |
 |------|-----------|------|
-| `SRC_DIR` | `'src'` | 入力ディレクトリ |
+| `DEFAULT_SRC_DIR` | `'public'` | 入力ディレクトリ |
 | `DIST_DIR` | `'dist'` | 出力ディレクトリ |
 
 ## ドロップレット
 
-`droplet.bat` に画像ファイルをドラッグ＆ドロップすると、`droplet.bat` と同じフォルダに品質 100 の WebP を出力します。
+`droplet.bat` に画像ファイルをドラッグ＆ドロップすると、ロスレスの WebP に変換して `DIST_DIR` へ出力します。
 
 - 複数ファイルの一括ドロップ対応
-- `npm install` 済みであれば追加設定不要
-- 出力先は常に `droplet.bat` と同じフォルダ
+    - ただしディレクトリまるごとドラッグ＆ドロップはできない
+- `pnpm i --frozen-lockfile` 済みであれば追加設定不要
+- 出力先は常に `DIST_DIR`
