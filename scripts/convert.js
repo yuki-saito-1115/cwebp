@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { existsSync, mkdirSync, readdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, copyFileSync, rmSync } from 'node:fs'
 import { join, extname, relative, dirname, basename } from 'node:path'
 import { createInterface } from 'node:readline'
 import cwebp from 'cwebp-bin'
@@ -24,6 +24,15 @@ function ask(question) {
 async function askSrcDir() {
   const answer = await ask(`インプットディレクトリを入力してください (デフォルト: ${DEFAULT_SRC_DIR}): `)
   return answer === '' ? DEFAULT_SRC_DIR : answer
+}
+
+async function askSourceMode() {
+  const answer = await ask('元ファイルの扱いを選択してください ([1] webp に置換 / [2] 元画像を残して webp を追加 / [3] 変更しない、デフォルト: 3): ')
+  if (answer === '' || answer === '3') return 'none'
+  if (answer === '1') return 'replace'
+  if (answer === '2') return 'add'
+  console.error('エラー: 1、2、3 のいずれかを入力してください')
+  process.exit(1)
 }
 
 async function askQuality() {
@@ -50,7 +59,7 @@ function findImages(dir) {
   return files
 }
 
-async function convertImage(srcPath, srcDir, quality) {
+async function convertImage(srcPath, srcDir, quality, sourceMode) {
   const relativePath = relative(srcDir, srcPath)
   const outputName = basename(relativePath, extname(relativePath)) + '.webp'
   const outputPath = join(DIST_DIR, dirname(relativePath), outputName)
@@ -61,6 +70,13 @@ async function convertImage(srcPath, srcDir, quality) {
     ? ['-lossless', srcPath, '-o', outputPath]
     : ['-q', String(quality), srcPath, '-o', outputPath]
   await execFileAsync(cwebp, args)
+
+  if (sourceMode !== 'none') {
+    const srcWebpPath = join(dirname(srcPath), outputName)
+    copyFileSync(outputPath, srcWebpPath)
+    if (sourceMode === 'replace') rmSync(srcPath)
+  }
+
   console.log(`  ${srcPath} → ${outputPath}`)
 }
 
@@ -80,11 +96,12 @@ async function main() {
     return
   }
 
+  const sourceMode = await askSourceMode()
   const quality = await askQuality()
   const qualityLabel = quality === 'lossless' ? 'ロスレス' : quality
   console.log(`\n${images.length} 件の画像を変換します... (品質: ${qualityLabel})\n`)
 
-  const results = await Promise.allSettled(images.map(img => convertImage(img, srcDir, quality)))
+  const results = await Promise.allSettled(images.map(img => convertImage(img, srcDir, quality, sourceMode)))
 
   const succeeded = results.filter(r => r.status === 'fulfilled').length
   const failed = results.filter(r => r.status === 'rejected')
