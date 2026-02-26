@@ -1,0 +1,15 @@
+{
+  "name": "cwebp",
+  "version": "1.0.0",
+  "description": "Convert images to WebP format using cwebp",
+  "type": "module",
+  "scripts": {
+    "convert": "node scripts/convert.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cwebp-bin": "^8.0.0"
+  }
+}
