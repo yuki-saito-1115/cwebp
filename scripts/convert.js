@@ -7,23 +7,34 @@ import cwebp from 'cwebp-bin'
 
 const execFileAsync = promisify(execFile)
 
-const SRC_DIR = 'src'
+const DEFAULT_SRC_DIR = 'public'
 const DIST_DIR = 'dist'
 const SUPPORTED_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif'])
 
-function askQuality() {
+function ask(question) {
   const rl = createInterface({ input: process.stdin, output: process.stdout })
   return new Promise(resolve => {
-    rl.question('変換品質を入力してください (0〜100、デフォルト: 80): ', answer => {
+    rl.question(question, answer => {
       rl.close()
-      const value = answer.trim() === '' ? 80 : Number(answer.trim())
-      if (!Number.isInteger(value) || value < 0 || value > 100) {
-        console.error('エラー: 0〜100 の整数を入力してください')
-        process.exit(1)
-      }
-      resolve(value)
+      resolve(answer.trim())
     })
   })
+}
+
+async function askSrcDir() {
+  const answer = await ask(`インプットディレクトリを入力してください (デフォルト: ${DEFAULT_SRC_DIR}): `)
+  return answer === '' ? DEFAULT_SRC_DIR : answer
+}
+
+async function askQuality() {
+  const answer = await ask('変換品質を入力してください (0〜100、デフォルト: ロスレス): ')
+  if (answer === '') return 'lossless'
+  const value = Number(answer)
+  if (!Number.isInteger(value) || value < 0 || value > 100) {
+    console.error('エラー: 0〜100 の整数を入力してください')
+    process.exit(1)
+  }
+  return value === 100 ? 'lossless' : value
 }
 
 function findImages(dir) {
@@ -39,35 +50,41 @@ function findImages(dir) {
   return files
 }
 
-async function convertImage(srcPath, quality) {
-  const relativePath = relative(SRC_DIR, srcPath)
+async function convertImage(srcPath, srcDir, quality) {
+  const relativePath = relative(srcDir, srcPath)
   const outputName = basename(relativePath, extname(relativePath)) + '.webp'
   const outputPath = join(DIST_DIR, dirname(relativePath), outputName)
 
   mkdirSync(dirname(outputPath), { recursive: true })
 
-  await execFileAsync(cwebp, ['-q', String(quality), srcPath, '-o', outputPath])
+  const args = quality === 'lossless'
+    ? ['-lossless', srcPath, '-o', outputPath]
+    : ['-q', String(quality), srcPath, '-o', outputPath]
+  await execFileAsync(cwebp, args)
   console.log(`  ${srcPath} → ${outputPath}`)
 }
 
 async function main() {
-  if (!existsSync(SRC_DIR)) {
-    console.error(`エラー: src ディレクトリが見つかりません`)
+  const srcDir = await askSrcDir()
+
+  if (!existsSync(srcDir)) {
+    console.error(`エラー: ${srcDir} ディレクトリが見つかりません`)
     process.exit(1)
   }
 
-  const images = findImages(SRC_DIR)
+  const images = findImages(srcDir)
 
   if (images.length === 0) {
-    console.log('src ディレクトリに変換対象の画像が見つかりませんでした')
+    console.log(`${srcDir} ディレクトリに変換対象の画像が見つかりませんでした`)
     console.log(`対応形式: ${[...SUPPORTED_EXTS].join(', ')}`)
     return
   }
 
   const quality = await askQuality()
-  console.log(`\n${images.length} 件の画像を変換します... (品質: ${quality})\n`)
+  const qualityLabel = quality === 'lossless' ? 'ロスレス' : quality
+  console.log(`\n${images.length} 件の画像を変換します... (品質: ${qualityLabel})\n`)
 
-  const results = await Promise.allSettled(images.map(img => convertImage(img, quality)))
+  const results = await Promise.allSettled(images.map(img => convertImage(img, srcDir, quality)))
 
   const succeeded = results.filter(r => r.status === 'fulfilled').length
   const failed = results.filter(r => r.status === 'rejected')
